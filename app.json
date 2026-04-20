@@ -38,6 +38,12 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Zero Drop to access your location to show nearby food requests."
+        }
       ]
     ],
     "experiments": {
