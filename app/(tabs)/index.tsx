@@ -1,6 +1,14 @@
-import { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useQuery } from "convex/react";
+import { useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useAction, useQuery } from "convex/react";
 import { router } from "expo-router";
 
 import { api } from "@/convex/_generated/api";
@@ -25,6 +33,20 @@ export default function HomeScreen() {
     | RequestItem[]
     | undefined;
   const requests = requestsQuery ?? [];
+  const predictDonationNeed = useAction(
+    (api as any).aiNeeds.predictDonationNeed as any,
+  );
+  const [foodType, setFoodType] = useState("tempe");
+  const [days, setDays] = useState("1");
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [prediction, setPrediction] = useState<{
+    estimatedKg: number;
+    confidence: "low" | "medium" | "high";
+    assumptions: string;
+    reasoning: string;
+    model?: string;
+  } | null>(null);
+  const [predictionError, setPredictionError] = useState<string | null>(null);
 
   const aiInsight = useMemo(() => {
     const totalLocations = requests.length;
@@ -47,6 +69,38 @@ export default function HomeScreen() {
       current.neededQuantity > highest.neededQuantity ? current : highest,
     );
   }, [requests]);
+  const targetLocation = topRecommendation ?? requests[0] ?? null;
+
+  async function handlePredictNeed() {
+    if (!targetLocation) {
+      setPredictionError("Belum ada data panti untuk dihitung.");
+      return;
+    }
+
+    const parsedDays = Number(days);
+    if (!Number.isFinite(parsedDays) || parsedDays <= 0) {
+      setPredictionError("Jumlah hari harus berupa angka lebih dari 0.");
+      return;
+    }
+
+    try {
+      setPredictionError(null);
+      setIsPredicting(true);
+      const result = await predictDonationNeed({
+        receiverName: targetLocation.receiverName,
+        population: targetLocation.population,
+        foodType: foodType.trim() || "tempe",
+        mealsPerDay: 2,
+        days: parsedDays,
+        isUrgent: targetLocation.urgency === "urgent",
+      });
+      setPrediction(result);
+    } catch {
+      setPredictionError("Prediksi gagal. Coba lagi beberapa saat.");
+    } finally {
+      setIsPredicting(false);
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -125,6 +179,75 @@ export default function HomeScreen() {
           >
             <Text style={styles.buttonText}>Buka Halaman Tambah Donasi</Text>
           </Pressable>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>AI Prediksi Kebutuhan Donasi</Text>
+          {targetLocation ? (
+            <Text style={styles.description}>
+              Target: {targetLocation.receiverName} ({targetLocation.population}{" "}
+              anak)
+            </Text>
+          ) : (
+            <Text style={styles.emptyText}>Belum ada target panti.</Text>
+          )}
+
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Jenis makanan</Text>
+            <TextInput
+              value={foodType}
+              onChangeText={setFoodType}
+              placeholder="Contoh: tempe"
+              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+            />
+          </View>
+
+          <View style={styles.formRow}>
+            <Text style={styles.formLabel}>Durasi (hari)</Text>
+            <TextInput
+              value={days}
+              onChangeText={setDays}
+              keyboardType="number-pad"
+              placeholder="1"
+              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+            />
+          </View>
+
+          <Pressable
+            style={[styles.button, isPredicting && styles.buttonDisabled]}
+            onPress={handlePredictNeed}
+            disabled={isPredicting}
+          >
+            {isPredicting ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.buttonText}>Hitung Prediksi AI</Text>
+            )}
+          </Pressable>
+
+          {predictionError ? (
+            <Text style={styles.errorText}>{predictionError}</Text>
+          ) : null}
+
+          {prediction ? (
+            <View style={styles.predictionCard}>
+              <Text style={styles.predictionTitle}>
+                Estimasi donasi {foodType}: {prediction.estimatedKg} kg
+              </Text>
+              <Text style={styles.predictionMeta}>
+                Confidence: {prediction.confidence.toUpperCase()}
+                {prediction.model ? ` • Model: ${prediction.model}` : ""}
+              </Text>
+              <Text style={styles.predictionText}>
+                Asumsi: {prediction.assumptions}
+              </Text>
+              <Text style={styles.predictionText}>
+                Penjelasan: {prediction.reasoning}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
     </View>
@@ -249,5 +372,55 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       color: "#ffffff",
       fontSize: 14,
       fontWeight: "700",
+    },
+    buttonDisabled: {
+      opacity: 0.8,
+    },
+    formRow: {
+      gap: 6,
+    },
+    formLabel: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    input: {
+      backgroundColor: colors.bg,
+      borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      color: colors.text,
+      fontSize: 14,
+    },
+    errorText: {
+      color: colors.danger,
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: "600",
+    },
+    predictionCard: {
+      backgroundColor: colors.bg,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      gap: 6,
+    },
+    predictionTitle: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    predictionMeta: {
+      color: colors.primary,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    predictionText: {
+      color: colors.textMuted,
+      fontSize: 13,
+      lineHeight: 18,
     },
   });

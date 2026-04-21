@@ -4,8 +4,8 @@ import { v } from "convex/values";
 const sampleRequests = [
   {
     receiverName: "Panti Asuhan Harapan Bangsa",
-    population: 42,
-    neededQuantity: 120,
+    population: 100,
+    neededQuantity: 280,
     lat: -6.2088,
     lng: 106.8456,
     urgency: "urgent" as const,
@@ -17,8 +17,8 @@ const sampleRequests = [
   },
   {
     receiverName: "Rumah Singgah Pelita Kasih",
-    population: 26,
-    neededQuantity: 80,
+    population: 75,
+    neededQuantity: 210,
     lat: -6.1825,
     lng: 106.8283,
     urgency: "normal" as const,
@@ -30,8 +30,8 @@ const sampleRequests = [
   },
   {
     receiverName: "Panti Yatim Cahaya Ummat",
-    population: 58,
-    neededQuantity: 180,
+    population: 50,
+    neededQuantity: 140,
     lat: -6.2297,
     lng: 106.8326,
     urgency: "urgent" as const,

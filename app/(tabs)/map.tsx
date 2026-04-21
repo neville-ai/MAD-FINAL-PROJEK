@@ -12,10 +12,19 @@ import {
   View,
 } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from "react-native-maps";
+import MapViewDirections from "react-native-maps-directions";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/convex/_generated/api";
 import useTheme from "@/hooks/useTheme";
+import {
+  geolocateWithGoogle,
+  getDirectionsApiKey,
+  hasDirectionsApiKey,
+  hasGeocodingApiKey,
+  hasGeolocationApiKey,
+  reverseGeocodeWithGoogle,
+} from "@/lib/googleMaps";
 import { calculateFoodNeeds, getUrgencyFactor } from "@/lib/foodNeeds";
 
 const EMPTY_REQUESTS: RequestMarker[] = [];
@@ -27,6 +36,7 @@ const LOCATION_UPDATE_INTERVAL_MS = 4000;
 const LOCATION_DISTANCE_INTERVAL_M = 5;
 const MIN_MOVEMENT_TO_UPDATE_M = 3;
 const MAX_ACCEPTABLE_ACCURACY_M = 80;
+const MIN_DISTANCE_FOR_REVERSE_GEOCODE_M = 60;
 
 type RequestMarker = {
   _id: string;
@@ -85,7 +95,14 @@ export default function MapScreen() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isSeeding, setIsSeeding] = useState(false);
   const [userAccuracy, setUserAccuracy] = useState<number | null>(null);
+  const [userAddress, setUserAddress] = useState<string | null>(null);
+  const [routeInfo, setRouteInfo] = useState<{
+    distanceKm: number;
+    durationMin: number;
+  } | null>(null);
+  const [locationSource, setLocationSource] = useState<"gps" | "network" | null>(null);
   const lastUserRegionRef = useRef<Region | null>(null);
+  const lastReverseGeocodedRef = useRef<Region | null>(null);
 
   const updateUserRegion = useCallback((latitude: number, longitude: number) => {
     const nextRegion: Region = {
@@ -128,6 +145,7 @@ export default function MapScreen() {
       setLocationError(null);
       setUserAccuracy(accuracy);
       updateUserRegion(position.coords.latitude, position.coords.longitude);
+      setLocationSource("gps");
       return true;
     },
     [updateUserRegion],
@@ -136,6 +154,31 @@ export default function MapScreen() {
   useEffect(() => {
     let isMounted = true;
     let locationSubscription: Location.LocationSubscription | null = null;
+    async function tryNetworkGeolocationFallback() {
+      if (!hasGeolocationApiKey()) {
+        return false;
+      }
+
+      try {
+        const networkLocation = await geolocateWithGoogle();
+        if (!networkLocation || !isMounted) {
+          return false;
+        }
+
+        setUserAccuracy(networkLocation.accuracy);
+        setLocationSource("network");
+        setLocationError(
+          "Menggunakan network geolocation (perkiraan). Aktifkan GPS presisi untuk hasil lebih akurat.",
+        );
+        updateUserRegion(networkLocation.latitude, networkLocation.longitude);
+        if (lastUserRegionRef.current) {
+          mapRef.current?.animateToRegion(lastUserRegionRef.current, 700);
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    }
 
     async function loadUserLocation() {
       try {
@@ -155,6 +198,7 @@ export default function MapScreen() {
               );
             }
           }
+          await tryNetworkGeolocationFallback();
           return;
         }
 
@@ -165,6 +209,7 @@ export default function MapScreen() {
               "Layanan lokasi perangkat nonaktif. Aktifkan GPS terlebih dahulu.",
             );
           }
+          await tryNetworkGeolocationFallback();
           return;
         }
 
@@ -197,6 +242,10 @@ export default function MapScreen() {
               mapRef.current?.animateToRegion(lastUserRegionRef.current, 700);
             }
           }
+
+          if (!lastUserRegionRef.current) {
+            await tryNetworkGeolocationFallback();
+          }
         }
 
         locationSubscription = await Location.watchPositionAsync(
@@ -217,6 +266,7 @@ export default function MapScreen() {
         if (isMounted) {
           setLocationError("Lokasi belum bisa diambil. Pastikan GPS perangkat aktif.");
         }
+        await tryNetworkGeolocationFallback();
       } finally {
         if (isMounted) {
           setIsLocating(false);
@@ -257,6 +307,7 @@ export default function MapScreen() {
       : "skip",
   );
   const resolvedFoodNeeds = remoteFoodNeeds ?? localFoodNeeds;
+  const directionsApiKey = getDirectionsApiKey();
   const mapRequestMarkers = useMemo(
     () =>
       requests.map((request) => (
@@ -275,6 +326,51 @@ export default function MapScreen() {
       )),
     [colors.danger, colors.success, requests],
   );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadUserAddress() {
+      if (!userRegion || !hasGeocodingApiKey()) {
+        return;
+      }
+
+      const last = lastReverseGeocodedRef.current;
+      if (last) {
+        const movedMeters = calculateDistanceInMeters(
+          last.latitude,
+          last.longitude,
+          userRegion.latitude,
+          userRegion.longitude,
+        );
+        if (movedMeters < MIN_DISTANCE_FOR_REVERSE_GEOCODE_M) {
+          return;
+        }
+      }
+
+      try {
+        const formattedAddress = await reverseGeocodeWithGoogle({
+          latitude: userRegion.latitude,
+          longitude: userRegion.longitude,
+        });
+
+        if (isMounted) {
+          lastReverseGeocodedRef.current = userRegion;
+          setUserAddress(formattedAddress);
+        }
+      } catch {
+        if (isMounted) {
+          setUserAddress(null);
+        }
+      }
+    }
+
+    loadUserAddress();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userRegion]);
 
   async function handleSeedSampleData() {
     try {
@@ -338,10 +434,12 @@ export default function MapScreen() {
           </View>
           {userRegion && (
             <Text style={styles.gpsText}>
-              GPS: {userRegion.latitude.toFixed(5)}, {userRegion.longitude.toFixed(5)}
+              {locationSource === "network" ? "Network" : "GPS"}:{" "}
+              {userRegion.latitude.toFixed(5)}, {userRegion.longitude.toFixed(5)}
               {userAccuracy !== null ? ` (±${Math.round(userAccuracy)}m)` : ""}
             </Text>
           )}
+          {userAddress && <Text style={styles.addressText}>Alamat: {userAddress}</Text>}
         </View>
 
         <View style={styles.mapCard}>
@@ -364,6 +462,32 @@ export default function MapScreen() {
                 title="Lokasi Saya"
                 description="Posisi GPS perangkat saat ini"
               />
+              {userRegion && selectedRequest && hasDirectionsApiKey() ? (
+                <MapViewDirections
+                  origin={{
+                    latitude: userRegion.latitude,
+                    longitude: userRegion.longitude,
+                  }}
+                  destination={{
+                    latitude: selectedRequest.latitude,
+                    longitude: selectedRequest.longitude,
+                  }}
+                  apikey={directionsApiKey}
+                  mode="DRIVING"
+                  strokeWidth={4}
+                  strokeColor={colors.primary}
+                  precision="low"
+                  onReady={(result) => {
+                    setRouteInfo({
+                      distanceKm: result.distance,
+                      durationMin: result.duration,
+                    });
+                  }}
+                  onError={() => {
+                    setRouteInfo(null);
+                  }}
+                />
+              ) : null}
               {mapRequestMarkers}
             </MapView>
           ) : (
@@ -451,6 +575,15 @@ export default function MapScreen() {
                   {selectedRequest.population} orang
                 </Text>
               </View>
+              {routeInfo && (
+                <View style={styles.populationCard}>
+                  <Text style={styles.populationLabel}>Estimasi rute dari lokasi kamu</Text>
+                  <Text style={styles.routeValue}>
+                    {routeInfo.distanceKm.toFixed(1)} km •{" "}
+                    {Math.round(routeInfo.durationMin)} menit
+                  </Text>
+                </View>
+              )}
 
               <View style={styles.needGrid}>
                 <View style={styles.needCard}>
@@ -557,6 +690,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       color: colors.textMuted,
       fontSize: 12,
       fontWeight: "600",
+    },
+    addressText: {
+      color: colors.textMuted,
+      fontSize: 12,
+      lineHeight: 16,
     },
     statsRow: {
       flexDirection: "row",
@@ -709,6 +847,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
     populationValue: {
       color: colors.text,
       fontSize: 24,
+      fontWeight: "700",
+    },
+    routeValue: {
+      color: colors.text,
+      fontSize: 18,
       fontWeight: "700",
     },
     needGrid: {
