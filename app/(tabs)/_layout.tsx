@@ -53,6 +53,16 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="receiver-dashboard"
+        options={{
+          title: "Panti",
+          // Jika ingin disembunyikan dari bar bawah, ganti dengan: href: null
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
