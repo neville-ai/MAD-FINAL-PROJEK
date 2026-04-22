@@ -5,11 +5,8 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
     email: v.optional(v.string()),
-    role: v.union(
-      v.literal("donor"),
-      v.literal("receiver"),
-      v.literal("admin"),
-    ),
+    password: v.optional(v.string()),
+    role: v.string(), // Berubah menjadi string polos
     phone: v.optional(v.string()),
     address: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
@@ -47,9 +44,9 @@ export default defineSchema({
     neededQuantity: v.number(),
     lat: v.number(),
     lng: v.number(),
-    urgency: v.union(v.literal("normal"), v.literal("urgent")),
     address: v.optional(v.string()),
     notes: v.optional(v.string()),
+    urgency: v.optional(v.string()), // Kept for backwards compatibility with existing documents
     status: v.union(
       v.literal("open"),
       v.literal("fulfilled"),
@@ -60,6 +57,5 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_createdAt", ["createdAt"])
-    .index("by_urgency", ["urgency"])
     .index("by_status", ["status"]),
 });

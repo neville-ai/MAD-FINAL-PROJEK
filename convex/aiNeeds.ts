@@ -65,7 +65,6 @@ export const predictDonationNeed = action({
     foodType: v.string(),
     mealsPerDay: v.optional(v.number()),
     days: v.optional(v.number()),
-    isUrgent: v.optional(v.boolean()),
   },
   handler: async (_ctx, args) => {
     const mealsPerDay = args.mealsPerDay ?? 2;
@@ -88,7 +87,6 @@ Hitung estimasi kebutuhan "${args.foodType}" untuk panti berikut:
 - jumlah anak: ${args.population}
 - porsi makan per hari: ${mealsPerDay}
 - jumlah hari: ${days}
-- status: ${args.isUrgent ? "urgent" : "normal"}
 
 Gunakan pendekatan realistis dan konservatif untuk lauk pendamping.
 Balas HANYA dalam JSON valid (tanpa markdown) dengan schema:

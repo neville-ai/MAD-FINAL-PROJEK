@@ -8,23 +8,21 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useQuery, useMutation } from "convex/react";
 import { router } from "expo-router";
 
 import { api } from "@/convex/_generated/api";
 import useTheme from "@/hooks/useTheme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type RequestItem = {
   _id: string;
   receiverName: string;
   population: number;
   neededQuantity: number;
-  urgency: "normal" | "urgent";
+  latitude?: number;
+  longitude?: number;
 };
-
-function getUrgencyLabel(urgency: RequestItem["urgency"]) {
-  return urgency === "urgent" ? "Urgent" : "Normal";
-}
 
 export default function HomeScreen() {
   const { colors } = useTheme();
@@ -36,6 +34,8 @@ export default function HomeScreen() {
   const predictDonationNeed = useAction(
     (api as any).aiNeeds.predictDonationNeed as any,
   );
+
+  const addDonation = useAction((api as any).donations?.addDonation as any) || useMutation((api as any).donations?.addDonation as any) || (async () => {});
   const [foodType, setFoodType] = useState("tempe");
   const [days, setDays] = useState("1");
   const [isPredicting, setIsPredicting] = useState(false);
@@ -47,16 +47,13 @@ export default function HomeScreen() {
     model?: string;
   } | null>(null);
   const [predictionError, setPredictionError] = useState<string | null>(null);
+  const [donationHours, setDonationHours] = useState("2");
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [donationSuccess, setDonationSuccess] = useState(false);
 
   const aiInsight = useMemo(() => {
-    const totalLocations = requests.length;
-    const urgentLocations = requests.filter(
-      (request) => request.urgency === "urgent",
-    ).length;
-
     return {
-      totalLocations,
-      urgentLocations,
+      totalLocations: requests.length,
     };
   }, [requests]);
 
@@ -92,13 +89,39 @@ export default function HomeScreen() {
         foodType: foodType.trim() || "tempe",
         mealsPerDay: 2,
         days: parsedDays,
-        isUrgent: targetLocation.urgency === "urgent",
       });
       setPrediction(result);
     } catch {
       setPredictionError("Prediksi gagal. Coba lagi beberapa saat.");
     } finally {
       setIsPredicting(false);
+    }
+  }
+
+  async function handleConfirmDonation() {
+    if (!targetLocation) return;
+    try {
+      setIsConfirming(true);
+      const donorId = await AsyncStorage.getItem("userId");
+      
+      const doAddDonation = api.donations?.addDonation;
+      if (doAddDonation) {
+        await addDonation({
+           donorId: donorId as any,
+           requestId: targetLocation._id as any,
+           foodType: foodType.trim() || "makanan",
+           quantity: prediction ? prediction.estimatedKg : 10,
+           unit: "kg",
+           notes: `Akan dikirim dalam ${donationHours} jam.`,
+        });
+      }
+      setTimeout(() => {
+        setDonationSuccess(true);
+        setIsConfirming(false);
+      }, 1000);
+    } catch (e) {
+      console.error(e);
+      setIsConfirming(false);
     }
   }
 
@@ -115,17 +138,11 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>AI Insight</Text>
+          <Text style={styles.sectionTitle}>Insight Lokasi Panti</Text>
           <View style={styles.insightRow}>
             <View style={styles.insightChip}>
               <Text style={styles.insightValue}>{aiInsight.totalLocations}</Text>
-              <Text style={styles.insightLabel}>Total Lokasi</Text>
-            </View>
-            <View style={styles.insightChip}>
-              <Text style={[styles.insightValue, { color: colors.danger }]}>
-                {aiInsight.urgentLocations}
-              </Text>
-              <Text style={styles.insightLabel}>Lokasi Urgent</Text>
+              <Text style={styles.insightLabel}>Total Panti Terdaftar</Text>
             </View>
           </View>
         </View>
@@ -140,9 +157,6 @@ export default function HomeScreen() {
               </Text>
               <Text style={styles.recommendationText}>
                 Kebutuhan harian: {topRecommendation.population * 2} porsi
-              </Text>
-              <Text style={styles.recommendationText}>
-                Status: {getUrgencyLabel(topRecommendation.urgency)}
               </Text>
             </View>
           ) : (
@@ -178,6 +192,15 @@ export default function HomeScreen() {
             onPress={() => router.push("/donation")}
           >
             <Text style={styles.buttonText}>Buka Halaman Tambah Donasi</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.button, { backgroundColor: colors.danger, marginTop: 10 }]}
+            onPress={async () => {
+              await AsyncStorage.clear();
+              router.replace("/onboarding");
+            }}
+          >
+            <Text style={styles.buttonText}>Keluar (Logout)</Text>
           </Pressable>
         </View>
 
@@ -236,16 +259,34 @@ export default function HomeScreen() {
               <Text style={styles.predictionTitle}>
                 Estimasi donasi {foodType}: {prediction.estimatedKg} kg
               </Text>
-              <Text style={styles.predictionMeta}>
-                Confidence: {prediction.confidence.toUpperCase()}
-                {prediction.model ? ` • Model: ${prediction.model}` : ""}
-              </Text>
               <Text style={styles.predictionText}>
                 Asumsi: {prediction.assumptions}
               </Text>
-              <Text style={styles.predictionText}>
-                Penjelasan: {prediction.reasoning}
-              </Text>
+              
+              <View style={{ marginTop: 12, borderTopWidth: 1, borderColor: colors.border, paddingTop: 12 }}>
+                <Text style={styles.sectionTitle}>Konfirmasi Pengiriman</Text>
+                <Text style={styles.description}>Beri tahu panti bahwa Anda akan mengirimkan donasi ini.</Text>
+                
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Estimasi tiba (jam)</Text>
+                  <TextInput
+                    value={donationHours}
+                    onChangeText={setDonationHours}
+                    keyboardType="number-pad"
+                    style={styles.input}
+                  />
+                </View>
+                
+                <Pressable
+                  style={[styles.button, { marginTop: 10, backgroundColor: colors.primary }, isConfirming && styles.buttonDisabled]}
+                  onPress={handleConfirmDonation}
+                  disabled={isConfirming || donationSuccess}
+                >
+                  <Text style={styles.buttonText}>
+                    {donationSuccess ? "Terkonfirmasi ✓" : isConfirming ? "Memproses..." : "Kirim Konfirmasi ke Panti"}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           ) : null}
         </View>

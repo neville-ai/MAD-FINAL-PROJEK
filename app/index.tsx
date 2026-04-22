@@ -10,6 +10,9 @@ export default function Index() {
   useEffect(() => {
     async function checkAuth() {
       try {
+        // [SISTEM SAYA TAMBAHKAN SEMENTARA UNTUK MERESET MEMORI HP ANDA]
+        // await AsyncStorage.clear(); 
+        
         const storedRole = await AsyncStorage.getItem("userRole");
         if (storedRole) {
           setRole(storedRole);
@@ -35,10 +38,14 @@ export default function Index() {
     return <Redirect href="/onboarding" />;
   }
 
+  // if (role === "donor") {
+  //   return <Redirect href={"/(tabs)" as any} />;
+  // } else {
+  //   return <Redirect href={"/(tabs)/receiver-dashboard" as any} />;
+  // }
   if (role === "donor") {
-    return <Redirect href={"/(tabs)" as any} />;
+    return <Redirect href={"/(donor)" as any} />;
   } else {
-    // Sesuaikan ini dengan rute dashboard panti Anda yang sebenarnya
-    return <Redirect href={"/(tabs)/receiver-dashboard" as any} />;
+    return <Redirect href={"/(panti)" as any} />;
   }
 }

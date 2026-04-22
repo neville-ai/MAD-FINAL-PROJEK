@@ -8,7 +8,6 @@ const sampleRequests = [
     neededQuantity: 280,
     lat: -6.2088,
     lng: 106.8456,
-    urgency: "urgent" as const,
     address: "Menteng, Jakarta Pusat",
     notes: "Membutuhkan lauk siap saji dan bahan pokok untuk anak-anak.",
     status: "open" as const,
@@ -21,7 +20,6 @@ const sampleRequests = [
     neededQuantity: 210,
     lat: -6.1825,
     lng: 106.8283,
-    urgency: "normal" as const,
     address: "Tanah Abang, Jakarta Pusat",
     notes: "Kebutuhan rutin makanan bergizi untuk balita dan lansia.",
     status: "open" as const,
@@ -34,7 +32,6 @@ const sampleRequests = [
     neededQuantity: 140,
     lat: -6.2297,
     lng: 106.8326,
-    urgency: "urgent" as const,
     address: "Setiabudi, Jakarta Selatan",
     notes: "Stok beras dan lauk kering menipis untuk pekan ini.",
     status: "open" as const,
@@ -48,13 +45,7 @@ export const getAllRequests = query({
   handler: async (ctx) => {
     const requests = await ctx.db.query("requests").collect();
 
-    return requests.sort((a, b) => {
-      if (a.urgency === b.urgency) {
-        return b.createdAt - a.createdAt;
-      }
-
-      return a.urgency === "urgent" ? -1 : 1;
-    });
+    return requests.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 
@@ -64,18 +55,11 @@ export const listForMap = query({
     const requests = await ctx.db.query("requests").collect();
 
     return requests
-      .sort((a, b) => {
-        if (a.urgency === b.urgency) {
-          return b.population - a.population;
-        }
-
-        return a.urgency === "urgent" ? -1 : 1;
-      })
+      .sort((a, b) => b.population - a.population)
       .map((request) => ({
         ...request,
         latitude: request.lat,
         longitude: request.lng,
-        isUrgent: request.urgency === "urgent",
       }));
   },
 });
@@ -87,7 +71,6 @@ export const addRequest = mutation({
     neededQuantity: v.number(),
     lat: v.number(),
     lng: v.number(),
-    urgency: v.union(v.literal("normal"), v.literal("urgent")),
     address: v.optional(v.string()),
     notes: v.optional(v.string()),
     createdBy: v.optional(v.id("users")),
