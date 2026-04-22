@@ -46,7 +46,8 @@ export default defineSchema({
     lng: v.number(),
     address: v.optional(v.string()),
     notes: v.optional(v.string()),
-    urgency: v.optional(v.string()), // Kept for backwards compatibility with existing documents
+  // urgency: 'normal' | 'butuh' | 'urgent' (optional)
+  urgency: v.optional(v.union(v.literal("normal"), v.literal("butuh"), v.literal("urgent"))),
     status: v.union(
       v.literal("open"),
       v.literal("fulfilled"),

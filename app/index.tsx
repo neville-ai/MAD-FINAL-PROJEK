@@ -35,7 +35,7 @@ export default function Index() {
   }
 
   if (!role) {
-    return <Redirect href="/onboarding" />;
+    return <Redirect href="/onboarding"/>;
   }
 
   // if (role === "donor") {

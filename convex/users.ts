@@ -1,5 +1,5 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 
 // Autentikasi Pengguna (Login atau Register)
 export const authenticateUser = mutation({
@@ -23,12 +23,14 @@ export const authenticateUser = mutation({
         // Jika akun lama (belum punya password), kita update dengan password baru ini
         await ctx.db.patch(existingUser._id, { password: args.password });
       } else if (existingUser.password !== args.password) {
-        throw new Error("Password salah!");
+        // Kembalikan objek error alih-alih melempar exception supaya klien
+        // dapat menampilkan hanya pesan yang relevan tanpa stack trace.
+        return { error: "Password salah!" } as const;
       }
       if (existingUser.role !== args.role) {
-        throw new Error(`Anda sudah terdaftar sebagai ${existingUser.role}. Silakan kembali dan pilih role yang sesuai.`);
+        return { error: `Anda sudah terdaftar sebagai ${existingUser.role}. Silakan kembali dan pilih role yang sesuai.` } as const;
       }
-      return existingUser._id;
+      return { userId: existingUser._id } as const;
     }
 
     // Proses Register
@@ -41,7 +43,7 @@ export const authenticateUser = mutation({
       lng: args.lng,
       createdAt: Date.now(),
     });
-    return newUserId;
+    return { userId: newUserId } as const;
   },
 });
 

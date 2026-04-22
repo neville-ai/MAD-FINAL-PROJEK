@@ -11,12 +11,49 @@ import {
   Text,
   View,
 } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE, type Region } from "react-native-maps";
-import MapViewDirections from "react-native-maps-directions";
 import { SafeAreaView } from "react-native-safe-area-context";
+// react-native-maps & react-native-maps-directions are native-only packages.
+// Import them at runtime on native platforms and provide web stubs so
+// Metro doesn't try to bundle native internals for web.
+
+// Define a lightweight Region type to avoid importing it from the native module
+// (which could drag native-only code into the web bundle).
+type Region = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
+
+let MapView: any;
+let Marker: any;
+let PROVIDER_GOOGLE: any;
+let MapViewDirections: any;
+
+if (Platform.OS !== "web") {
+  // require at runtime on native platforms only
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const RNMaps = require("react-native-maps");
+  MapView = RNMaps.default || RNMaps;
+  Marker = RNMaps.Marker || RNMaps;
+  PROVIDER_GOOGLE = RNMaps.PROVIDER_GOOGLE;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  MapViewDirections = require("react-native-maps-directions").default;
+} else {
+  // simple web-friendly stubs
+  MapView = (props: any) => (
+    <View style={[{ height: 300, backgroundColor: "#e5e7eb" }, props.style]}>
+      <Text style={{ textAlign: "center", padding: 12 }}>Peta tidak tersedia di web</Text>
+    </View>
+  );
+  Marker = (props: any) => null;
+  PROVIDER_GOOGLE = null;
+  MapViewDirections = (props: any) => null;
+}
 
 import { api } from "@/convex/_generated/api";
 import useTheme from "@/hooks/useTheme";
+import { calculateFoodNeeds, getUrgencyFactor } from "@/lib/foodNeeds";
 import {
   geolocateWithGoogle,
   getDirectionsApiKey,
@@ -25,7 +62,6 @@ import {
   hasGeolocationApiKey,
   reverseGeocodeWithGoogle,
 } from "@/lib/googleMaps";
-import { calculateFoodNeeds, getUrgencyFactor } from "@/lib/foodNeeds";
 
 const EMPTY_REQUESTS: RequestMarker[] = [];
 const USER_REGION_DELTA = {
@@ -81,7 +117,7 @@ function calculateDistanceInMeters(
 export default function MapScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const mapRef = useRef<MapView | null>(null);
+  const mapRef = useRef<any>(null);
 
   const requestsQuery = useQuery(api.requests.listForMap) as
     | RequestMarker[]
@@ -477,7 +513,7 @@ export default function MapScreen() {
                   strokeWidth={4}
                   strokeColor={colors.primary}
                   precision="low"
-                  onReady={(result) => {
+                  onReady={(result: { distance: number; duration: number }) => {
                     setRouteInfo({
                       distanceKm: result.distance,
                       durationMin: result.duration,

@@ -9,7 +9,7 @@ export default function RootLayout() {
     <ConvexProvider client={convex}>
       <ThemeProvider>
         <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
+          {/* Root stack uses individual screen files in app/ — remove reference to non-existent (tabs) group */}
         </Stack>
       </ThemeProvider>
     </ConvexProvider>

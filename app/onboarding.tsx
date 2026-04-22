@@ -1,22 +1,22 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  KeyboardAvoidingView, 
-  Platform,
-  ActivityIndicator,
-  Alert,
-  SafeAreaView,
-  Image
-} from 'react-native';
-import { useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useMutation } from 'convex/react';
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -54,7 +54,19 @@ export default function OnboardingScreen() {
       }
 
       // Autentikasi (Login / Register) ke Convex
-      const userId = await authenticateUserMutation({ email, password, role: role!, lat, lng });
+      const result = await authenticateUserMutation({ email, password, role: role!, lat, lng });
+
+      // Jika server mengembalikan object error, tampilkan pesan singkatnya
+      if (result && (result as any).error) {
+        Alert.alert("Gagal", (result as any).error);
+        return;
+      }
+
+      const userId = (result as any).userId;
+      if (!userId) {
+        Alert.alert("Error", "Hasil autentikasi tidak valid.");
+        return;
+      }
 
       // Simpan login state di lokal
       await AsyncStorage.setItem('userId', userId);

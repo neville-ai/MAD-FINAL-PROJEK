@@ -1,5 +1,5 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 
 export const addDonation = mutation({
   args: {
@@ -36,6 +36,19 @@ export const getIncomingDonations = query({
   handler: async (ctx, args) => {
     // For now, return all donations and let the frontend separate by status
     const donations = await ctx.db.query("donations").order("desc").collect();
+    return donations;
+  },
+});
+
+export const getDonationsByRequest = query({
+  args: { requestId: v.id("requests") },
+  handler: async (ctx, args) => {
+    const donations = await ctx.db
+      .query("donations")
+      .filter((q) => q.eq(q.field("requestId"), args.requestId))
+      .order("desc")
+      .collect();
+
     return donations;
   },
 });
