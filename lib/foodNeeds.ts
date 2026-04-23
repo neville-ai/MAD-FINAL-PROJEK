@@ -2,8 +2,12 @@ export const AVG_CONSUMPTION = 2;
 export const NORMAL_URGENCY_FACTOR = 1;
 export const URGENT_URGENCY_FACTOR = 1.2;
 
-export function getUrgencyFactor(isUrgent: boolean) {
-  return isUrgent ? URGENT_URGENCY_FACTOR : NORMAL_URGENCY_FACTOR;
+export function getUrgencyFactor(urgency?: string) {
+  return urgency === "Urgent" 
+    ? URGENT_URGENCY_FACTOR 
+    : urgency === "Butuh Bantuan" 
+    ? 1.1 
+    : NORMAL_URGENCY_FACTOR;
 }
 
 function roundUpPortions(value: number) {

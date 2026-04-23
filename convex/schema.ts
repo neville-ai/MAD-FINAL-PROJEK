@@ -59,4 +59,15 @@ export default defineSchema({
   })
     .index("by_createdAt", ["createdAt"])
     .index("by_status", ["status"]),
+  notifications: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    message: v.string(),
+    isRead: v.boolean(),
+    originalDonationId: v.optional(v.id("donations")),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_unread", ["userId", "isRead"])
+    .index("by_createdAt", ["createdAt"]),
 });

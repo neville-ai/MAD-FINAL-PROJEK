@@ -10,7 +10,7 @@ function roundUpPortions(value: number) {
 export const calculateFoodNeeds = query({
   args: {
     population: v.number(),
-    urgencyFactor: v.union(v.literal(1), v.literal(1.2)),
+    urgencyFactor: v.union(v.literal(1), v.literal(1.1), v.literal(1.2)),
   },
   handler: async (_ctx, args) => {
     const baseNeed =
