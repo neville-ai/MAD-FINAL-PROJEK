@@ -152,6 +152,12 @@ export default function ReceiverDashboard() {
         </View>
 
         <View style={styles.card}>
+          <Pressable style={[styles.button, { backgroundColor: colors.bg, borderColor: colors.primary, borderWidth: 1, marginTop: 0 }]} onPress={() => router.push("/notifications" as any)}>
+            <Text style={[styles.buttonText, { color: colors.primary }]}>🔔 Buka Notifikasi</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.card}>
           <Text style={styles.sectionTitle}>Donasi Dalam Pengantaran</Text>
           {inTransit.length === 0 ? (
             <View style={styles.statusBox}>
