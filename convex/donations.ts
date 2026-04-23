@@ -22,12 +22,28 @@ export const addDonation = mutation({
       }
     }
 
-    return await ctx.db.insert("donations", {
+    const donationId = await ctx.db.insert("donations", {
       ...args,
       donorName: finalDonorName,
       status: "available", // "Dalam Pengantaran"
       createdAt: Date.now(),
     });
+
+    if (args.requestId) {
+      const request = await ctx.db.get(args.requestId);
+      if (request?.createdBy) {
+        await ctx.db.insert("notifications", {
+          userId: request.createdBy,
+          title: "Donasi Baru",
+          message: `${finalDonorName} akan mengirimkan ${args.quantity} ${args.unit} ${args.foodType}.`,
+          isRead: false,
+          originalDonationId: donationId,
+          createdAt: Date.now(),
+        });
+      }
+    }
+    
+    return donationId;
   },
 });
 
@@ -82,5 +98,24 @@ export const updateDonationStatus = mutation({
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.donationId, { status: args.status });
+
+    if (args.status === "completed") {
+      const donation = await ctx.db.get(args.donationId);
+      if (donation?.donorId) {
+        let pantiName = "Panti";
+        if (donation.requestId) {
+          const request = await ctx.db.get(donation.requestId);
+          if (request) pantiName = request.receiverName;
+        }
+        await ctx.db.insert("notifications", {
+          userId: donation.donorId,
+          title: "Donasi Diterima",
+          message: `${pantiName} telah menerima donasi Anda (${donation.quantity} ${donation.unit} ${donation.foodType}). Terima kasih!`,
+          isRead: false,
+          originalDonationId: args.donationId,
+          createdAt: Date.now(),
+        });
+      }
+    }
   },
 });

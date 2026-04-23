@@ -48,6 +48,7 @@ export default function HomeScreen() {
   } | null>(null);
   const [predictionError, setPredictionError] = useState<string | null>(null);
   const [donationHours, setDonationHours] = useState("2");
+  const [donationAmount, setDonationAmount] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
   const [donationSuccess, setDonationSuccess] = useState(false);
 
@@ -91,6 +92,7 @@ export default function HomeScreen() {
         days: parsedDays,
       });
       setPrediction(result);
+      setDonationAmount(result.estimatedKg.toString());
     } catch {
       setPredictionError("Prediksi gagal. Coba lagi beberapa saat.");
     } finally {
@@ -110,7 +112,7 @@ export default function HomeScreen() {
            donorId: donorId as any,
            requestId: targetLocation._id as any,
            foodType: foodType.trim() || "makanan",
-           quantity: prediction ? prediction.estimatedKg : 10,
+           quantity: Number(donationAmount) || (prediction ? prediction.estimatedKg : 10),
            unit: "kg",
            notes: `Akan dikirim dalam ${donationHours} jam.`,
         });
@@ -184,7 +186,12 @@ export default function HomeScreen() {
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Navigasi</Text>
-          <Pressable style={styles.button} onPress={() => router.push("/map")}>
+          
+          <Pressable style={[styles.button, { backgroundColor: colors.bg, borderColor: colors.primary, borderWidth: 1 }]} onPress={() => router.push("/notifications" as any)}>
+            <Text style={[styles.buttonText, { color: colors.primary }]}>🔔 Buka Notifikasi</Text>
+          </Pressable>
+
+          <Pressable style={[styles.button, { marginTop: 10 }]} onPress={() => router.push("/map")}>
             <Text style={styles.buttonText}>Buka Halaman Map</Text>
           </Pressable>
           <Pressable
@@ -267,6 +274,21 @@ export default function HomeScreen() {
                 <Text style={styles.sectionTitle}>Konfirmasi Pengiriman</Text>
                 <Text style={styles.description}>Beri tahu panti bahwa Anda akan mengirimkan donasi ini.</Text>
                 
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Jumlah donasi (kg)</Text>
+                  <TextInput
+                    value={donationAmount}
+                    onChangeText={setDonationAmount}
+                    keyboardType="numeric"
+                    style={styles.input}
+                  />
+                  {prediction && Number(donationAmount) < (prediction.estimatedKg * 0.8) && (
+                    <Text style={{ color: colors.warning, fontSize: 13, fontWeight: '600' }}>
+                      Peringatan: Jumlah tidak cukup untuk {targetLocation.population} anak
+                    </Text>
+                  )}
+                </View>
+
                 <View style={styles.formRow}>
                   <Text style={styles.formLabel}>Estimasi tiba (jam)</Text>
                   <TextInput

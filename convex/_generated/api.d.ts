@@ -11,6 +11,7 @@
 import type * as aiNeeds from "../aiNeeds.js";
 import type * as donations from "../donations.js";
 import type * as foodNeeds from "../foodNeeds.js";
+import type * as notifications from "../notifications.js";
 import type * as requests from "../requests.js";
 import type * as users from "../users.js";
 
@@ -24,6 +25,7 @@ declare const fullApi: ApiFromModules<{
   aiNeeds: typeof aiNeeds;
   donations: typeof donations;
   foodNeeds: typeof foodNeeds;
+  notifications: typeof notifications;
   requests: typeof requests;
   users: typeof users;
 }>;

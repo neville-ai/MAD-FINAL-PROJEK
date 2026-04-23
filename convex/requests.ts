@@ -11,6 +11,7 @@ const sampleRequests = [
     address: "Menteng, Jakarta Pusat",
     notes: "Membutuhkan lauk siap saji dan bahan pokok untuk anak-anak.",
     status: "open" as const,
+    urgency: "Urgent",
     createdAt: Date.now(),
     updatedAt: Date.now(),
   },
@@ -23,6 +24,7 @@ const sampleRequests = [
     address: "Tanah Abang, Jakarta Pusat",
     notes: "Kebutuhan rutin makanan bergizi untuk balita dan lansia.",
     status: "open" as const,
+    urgency: "Normal",
     createdAt: Date.now() - 1_000,
     updatedAt: Date.now() - 1_000,
   },
@@ -35,6 +37,7 @@ const sampleRequests = [
     address: "Setiabudi, Jakarta Selatan",
     notes: "Stok beras dan lauk kering menipis untuk pekan ini.",
     status: "open" as const,
+    urgency: "Butuh Bantuan",
     createdAt: Date.now() - 2_000,
     updatedAt: Date.now() - 2_000,
   },
@@ -74,6 +77,7 @@ export const addRequest = mutation({
     address: v.optional(v.string()),
     notes: v.optional(v.string()),
     createdBy: v.optional(v.id("users")),
+    urgency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();

@@ -46,7 +46,7 @@ type RequestMarker = {
   longitude: number;
   address?: string;
   notes?: string;
-  isUrgent: boolean;
+  urgency?: string;
 };
 
 function formatNeed(value: number) {
@@ -90,6 +90,7 @@ export default function MapScreen() {
   const seedSampleRequests = useMutation(api.requests.seedSampleRequests);
 
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string>("Semua");
   const [userRegion, setUserRegion] = useState<Region | null>(null);
   const [isLocating, setIsLocating] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -288,13 +289,19 @@ export default function MapScreen() {
     }
   }, [requests, selectedRequestId]);
 
+  const filteredRequests = useMemo(() => {
+    if (activeFilter === "Semua") return requests;
+    if (activeFilter === "Normal") return requests.filter(r => !r.urgency || r.urgency === "Normal");
+    return requests.filter(r => r.urgency === activeFilter);
+  }, [requests, activeFilter]);
+
   const selectedRequest =
-    requests.find((request) => request._id === selectedRequestId) ?? null;
-  const urgentCount = requests.filter((request) => request.isUrgent).length;
+    filteredRequests.find((request) => request._id === selectedRequestId) ?? null;
+  const urgentCount = requests.filter((request) => request.urgency === "Urgent").length;
   const localFoodNeeds = selectedRequest
     ? calculateFoodNeeds(
         selectedRequest.population,
-        getUrgencyFactor(selectedRequest.isUrgent),
+        getUrgencyFactor(selectedRequest.urgency),
       )
     : null;
   const remoteFoodNeeds = useQuery(
@@ -302,7 +309,7 @@ export default function MapScreen() {
     selectedRequest
       ? {
           population: selectedRequest.population,
-          urgencyFactor: getUrgencyFactor(selectedRequest.isUrgent) as 1 | 1.2,
+          urgencyFactor: getUrgencyFactor(selectedRequest.urgency) as 1 | 1.1 | 1.2,
         }
       : "skip",
   );
@@ -310,21 +317,21 @@ export default function MapScreen() {
   const directionsApiKey = getDirectionsApiKey();
   const mapRequestMarkers = useMemo(
     () =>
-      requests.map((request) => (
+      filteredRequests.map((request) => (
         <Marker
           key={request._id}
           coordinate={{
             latitude: request.latitude,
             longitude: request.longitude,
           }}
-          pinColor={request.isUrgent ? colors.danger : colors.success}
+          pinColor={request.urgency === "Urgent" ? colors.danger : request.urgency === "Butuh Bantuan" ? colors.warning : colors.success}
           title={request.receiverName}
           description={`Population: ${request.population} orang`}
           onPress={() => handleMarkerPress(request)}
           tracksViewChanges={false}
         />
       )),
-    [colors.danger, colors.success, requests],
+    [colors.danger, colors.warning, colors.success, filteredRequests],
   );
 
   useEffect(() => {
@@ -432,6 +439,27 @@ export default function MapScreen() {
               <Text style={styles.locateChipText}>My Location</Text>
             </Pressable>
           </View>
+          
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+            {["Semua", "Normal", "Butuh Bantuan", "Urgent"].map((filter) => (
+              <Pressable
+                key={filter}
+                style={[
+                  styles.filterChip,
+                  activeFilter === filter && styles.filterChipActive,
+                  activeFilter === filter && filter === "Urgent" && { backgroundColor: colors.danger, borderColor: colors.danger },
+                  activeFilter === filter && filter === "Butuh Bantuan" && { backgroundColor: colors.warning, borderColor: colors.warning }
+                ]}
+                onPress={() => setActiveFilter(filter)}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  activeFilter === filter && styles.filterChipTextActive
+                ]}>{filter}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+
           {userRegion && (
             <Text style={styles.gpsText}>
               {locationSource === "network" ? "Network" : "GPS"}:{" "}
@@ -557,14 +585,16 @@ export default function MapScreen() {
                   style={[
                     styles.priorityBadge,
                     {
-                      backgroundColor: selectedRequest.isUrgent
+                      backgroundColor: selectedRequest.urgency === "Urgent"
                         ? colors.danger
+                        : selectedRequest.urgency === "Butuh Bantuan"
+                        ? colors.warning
                         : colors.success,
                     },
                   ]}
                 >
                   <Text style={styles.priorityBadgeText}>
-                    {selectedRequest.isUrgent ? "Urgent" : "Normal"}
+                    {selectedRequest.urgency || "Normal"}
                   </Text>
                 </View>
               </View>
@@ -594,7 +624,7 @@ export default function MapScreen() {
                       : "Loading..."}
                   </Text>
                   <Text style={styles.needFormula}>
-                    population x 2 x {selectedRequest.isUrgent ? "1.2" : "1"} x 1
+                    population x 2 x {getUrgencyFactor(selectedRequest.urgency)} x 1
                   </Text>
                 </View>
 
@@ -606,7 +636,7 @@ export default function MapScreen() {
                       : "Loading..."}
                   </Text>
                   <Text style={styles.needFormula}>
-                    population x 2 x {selectedRequest.isUrgent ? "1.2" : "1"} x 7
+                    population x 2 x {getUrgencyFactor(selectedRequest.urgency)} x 7
                   </Text>
                 </View>
 
@@ -618,7 +648,7 @@ export default function MapScreen() {
                       : "Loading..."}
                   </Text>
                   <Text style={styles.needFormula}>
-                    population x 2 x {selectedRequest.isUrgent ? "1.2" : "1"} x 30
+                    population x 2 x {getUrgencyFactor(selectedRequest.urgency)} x 30
                   </Text>
                 </View>
               </View>
@@ -735,6 +765,30 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       color: "#ffffff",
       fontSize: 13,
       fontWeight: "700",
+    },
+    filterRow: {
+      gap: 8,
+      paddingVertical: 4,
+    },
+    filterChip: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 100,
+      backgroundColor: colors.bg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    filterChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    filterChipText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textMuted,
+    },
+    filterChipTextActive: {
+      color: "#ffffff",
     },
     mapCard: {
       flex: 1.1,
