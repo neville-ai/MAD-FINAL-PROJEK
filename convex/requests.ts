@@ -1,47 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-const sampleRequests = [
-  {
-    receiverName: "Panti Asuhan Harapan Bangsa",
-    population: 100,
-    neededQuantity: 280,
-    lat: -6.2088,
-    lng: 106.8456,
-    address: "Menteng, Jakarta Pusat",
-    notes: "Membutuhkan lauk siap saji dan bahan pokok untuk anak-anak.",
-    status: "open" as const,
-    urgency: "Urgent",
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-  {
-    receiverName: "Rumah Singgah Pelita Kasih",
-    population: 75,
-    neededQuantity: 210,
-    lat: -6.1825,
-    lng: 106.8283,
-    address: "Tanah Abang, Jakarta Pusat",
-    notes: "Kebutuhan rutin makanan bergizi untuk balita dan lansia.",
-    status: "open" as const,
-    urgency: "Normal",
-    createdAt: Date.now() - 1_000,
-    updatedAt: Date.now() - 1_000,
-  },
-  {
-    receiverName: "Panti Yatim Cahaya Ummat",
-    population: 50,
-    neededQuantity: 140,
-    lat: -6.2297,
-    lng: 106.8326,
-    address: "Setiabudi, Jakarta Selatan",
-    notes: "Stok beras dan lauk kering menipis untuk pekan ini.",
-    status: "open" as const,
-    urgency: "Butuh Bantuan",
-    createdAt: Date.now() - 2_000,
-    updatedAt: Date.now() - 2_000,
-  },
-];
+
 
 export const getAllRequests = query({
   args: {},
@@ -78,10 +38,12 @@ export const addRequest = mutation({
     lat: v.number(),
     lng: v.number(),
     address: v.optional(v.string()),
-  urgency: v.optional(v.union(v.literal("normal"), v.literal("butuh"), v.literal("urgent"))),
+    urgency: v.optional(v.union(v.literal("normal"), v.literal("butuh"), v.literal("urgent"))),
     notes: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    pantiType: v.optional(v.string()),
+    operatingHours: v.optional(v.string()),
     createdBy: v.optional(v.id("users")),
-    urgency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -127,6 +89,9 @@ export const updateRequest = mutation({
     address: v.optional(v.string()),
     urgency: v.optional(v.union(v.literal("normal"), v.literal("butuh"), v.literal("urgent"))),
     notes: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    pantiType: v.optional(v.string()),
+    operatingHours: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const patch: any = {};
@@ -138,6 +103,9 @@ export const updateRequest = mutation({
     if (args.address !== undefined) patch.address = args.address;
     if (args.urgency !== undefined) patch.urgency = args.urgency;
     if (args.notes !== undefined) patch.notes = args.notes;
+    if (args.contactPhone !== undefined) patch.contactPhone = args.contactPhone;
+    if (args.pantiType !== undefined) patch.pantiType = args.pantiType;
+    if (args.operatingHours !== undefined) patch.operatingHours = args.operatingHours;
     patch.updatedAt = Date.now();
 
     await ctx.db.patch(args.requestId, patch);
@@ -161,25 +129,23 @@ export const migrateSetDefaultUrgency = mutation({
   },
 });
 
-export const seedSampleRequests = mutation({
+export const deleteAllRequests = mutation({
   args: {},
   handler: async (ctx) => {
-    const existing = await ctx.db.query("requests").take(1);
-
-    if (existing.length > 0) {
-      return {
-        inserted: 0,
-        message: "Sample requests already exist.",
-      };
+    // Delete all requests
+    const requests = await ctx.db.query("requests").collect();
+    for (const req of requests) {
+      await ctx.db.delete(req._id);
     }
-
-    for (const request of sampleRequests) {
-      await ctx.db.insert("requests", request);
+    
+    // Also delete all donations to ensure clean state
+    const donations = await ctx.db.query("donations").collect();
+    for (const don of donations) {
+      await ctx.db.delete(don._id);
     }
-
-    return {
-      inserted: sampleRequests.length,
-      message: "Sample requests inserted successfully.",
-    };
+    
+    return { deleted: requests.length };
   },
 });
+
+

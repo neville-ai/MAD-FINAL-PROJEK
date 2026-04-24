@@ -123,14 +123,13 @@ export default function MapScreen() {
     | RequestMarker[]
     | undefined;
   const requests = requestsQuery ?? EMPTY_REQUESTS;
-  const seedSampleRequests = useMutation(api.requests.seedSampleRequests);
 
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>("Semua");
   const [userRegion, setUserRegion] = useState<Region | null>(null);
   const [isLocating, setIsLocating] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [isSeeding, setIsSeeding] = useState(false);
+
   const [userAccuracy, setUserAccuracy] = useState<number | null>(null);
   const [userAddress, setUserAddress] = useState<string | null>(null);
   const [routeInfo, setRouteInfo] = useState<{
@@ -415,14 +414,7 @@ export default function MapScreen() {
     };
   }, [userRegion]);
 
-  async function handleSeedSampleData() {
-    try {
-      setIsSeeding(true);
-      await seedSampleRequests({});
-    } finally {
-      setIsSeeding(false);
-    }
-  }
+
 
   function focusRegion(region: Region) {
     mapRef.current?.animateToRegion(region, 700);
@@ -441,7 +433,7 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <View style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.headerCard}>
           <View style={styles.headerTextGroup}>
             <Text style={styles.eyebrow}>ZERO DROP MAP</Text>
@@ -589,25 +581,13 @@ export default function MapScreen() {
 
           {requests.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>Belum ada data request</Text>
+              <Text style={styles.emptyTitle}>Belum ada panti asuhan terdaftar</Text>
               <Text style={styles.emptyDescription}>
-                Gunakan sample data Convex untuk mencoba marker dan kalkulasi AI
-                kebutuhan makanan.
+                Panti asuhan akan muncul di sini setelah mereka mendaftar dan mengisi profil kebutuhan mereka.
               </Text>
-              <Pressable
-                style={styles.seedButton}
-                onPress={handleSeedSampleData}
-                disabled={isSeeding}
-              >
-                {isSeeding ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <Text style={styles.seedButtonText}>Load Sample Data</Text>
-                )}
-              </Pressable>
             </View>
           ) : selectedRequest ? (
-            <ScrollView contentContainerStyle={styles.detailsContent}>
+            <View style={styles.detailsContent}>
               <View style={styles.detailHeader}>
                 <View style={styles.detailTitleGroup}>
                   <Text style={styles.detailTitle}>
@@ -696,7 +676,7 @@ export default function MapScreen() {
                     "Belum ada catatan tambahan untuk request ini."}
                 </Text>
               </View>
-            </ScrollView>
+            </View>
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>Pilih marker pada map</Text>
@@ -707,7 +687,7 @@ export default function MapScreen() {
             </View>
           )}
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -721,8 +701,10 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
     container: {
       flex: 1,
       backgroundColor: colors.bg,
+    },
+    scrollContent: {
       paddingHorizontal: 16,
-      paddingBottom: 16,
+      paddingBottom: 24,
       gap: 12,
     },
     headerCard: {
@@ -732,6 +714,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       gap: 16,
       borderWidth: 1,
       borderColor: colors.border,
+      marginTop: 8,
     },
     headerTextGroup: {
       gap: 6,
@@ -827,8 +810,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       color: "#ffffff",
     },
     mapCard: {
-      flex: 1.1,
-      minHeight: 280,
+      height: 380,
       borderRadius: 24,
       overflow: "hidden",
       borderWidth: 1,
@@ -873,13 +855,12 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       flex: 1,
     },
     detailsCard: {
-      flex: 0.95,
       backgroundColor: colors.surface,
       borderRadius: 24,
       borderWidth: 1,
       borderColor: colors.border,
       padding: 18,
-      minHeight: 280,
+      minHeight: 300,
     },
     sectionTitle: {
       color: colors.text,
@@ -1007,19 +988,5 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       lineHeight: 20,
       textAlign: "center",
     },
-    seedButton: {
-      marginTop: 8,
-      backgroundColor: colors.primary,
-      borderRadius: 999,
-      paddingHorizontal: 18,
-      paddingVertical: 12,
-      minWidth: 170,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    seedButtonText: {
-      color: "#ffffff",
-      fontSize: 14,
-      fontWeight: "700",
-    },
+
   });

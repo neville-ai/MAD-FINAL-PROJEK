@@ -12,6 +12,7 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     lat: v.optional(v.number()),
     lng: v.optional(v.number()),
+    favoriteFood: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_email", ["email"])
@@ -45,7 +46,10 @@ export default defineSchema({
     lat: v.number(),
     lng: v.number(),
     address: v.optional(v.string()),
-    notes: v.optional(v.string()),
+    notes: v.optional(v.string()), // Deskripsi singkat
+    contactPhone: v.optional(v.string()),
+    pantiType: v.optional(v.string()), // panti asuhan / panti jompo
+    operatingHours: v.optional(v.string()),
   // urgency: 'normal' | 'butuh' | 'urgent' (optional)
   urgency: v.optional(v.union(v.literal("normal"), v.literal("butuh"), v.literal("urgent"))),
     status: v.union(

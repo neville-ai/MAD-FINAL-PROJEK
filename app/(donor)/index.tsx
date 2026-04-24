@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -35,7 +36,7 @@ export default function HomeScreen() {
     (api as any).aiNeeds.predictDonationNeed as any,
   );
 
-  const addDonation = useAction((api as any).donations?.addDonation as any) || useMutation((api as any).donations?.addDonation as any) || (async () => {});
+  const addDonation = useMutation((api as any).donations?.addDonation as any) || (async () => {});
   const [foodType, setFoodType] = useState("tempe");
   const [days, setDays] = useState("1");
   const [isPredicting, setIsPredicting] = useState(false);
@@ -51,6 +52,7 @@ export default function HomeScreen() {
   const [donationAmount, setDonationAmount] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
   const [donationSuccess, setDonationSuccess] = useState(false);
+  const [selectedPantiId, setSelectedPantiId] = useState<string | null>(null);
 
   const aiInsight = useMemo(() => {
     return {
@@ -67,7 +69,11 @@ export default function HomeScreen() {
       current.neededQuantity > highest.neededQuantity ? current : highest,
     );
   }, [requests]);
-  const targetLocation = topRecommendation ?? requests[0] ?? null;
+
+  const targetLocation = useMemo(() => {
+    if (!selectedPantiId) return null;
+    return requests.find(r => r._id === selectedPantiId) || null;
+  }, [selectedPantiId, requests]);
 
   async function handlePredictNeed() {
     if (!targetLocation) {
@@ -174,12 +180,33 @@ export default function HomeScreen() {
             <Text style={styles.emptyText}>Tidak ada data lokasi saat ini.</Text>
           ) : (
             requests.map((location) => (
-              <View key={location._id} style={styles.listItem}>
-                <Text style={styles.listTitle}>{location.receiverName}</Text>
-                <Text style={styles.listSubtitle}>
-                  {location.population} penghuni
-                </Text>
-              </View>
+              <Pressable 
+                key={location._id} 
+                style={[
+                  styles.listItem, 
+                  selectedPantiId === location._id && { borderColor: colors.primary, backgroundColor: colors.primary + '05', borderWidth: 2 }
+                ]}
+                onPress={() => {
+                  if (selectedPantiId === location._id) {
+                    setSelectedPantiId(null);
+                  } else {
+                    setSelectedPantiId(location._id);
+                  }
+                  setPrediction(null); // Reset prediction when changing or deselecting target
+                }}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <Text style={styles.listTitle}>{location.receiverName}</Text>
+                    <Text style={styles.listSubtitle}>
+                      {location.population} penghuni
+                    </Text>
+                  </View>
+                  {selectedPantiId === location._id && (
+                    <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+                  )}
+                </View>
+              </Pressable>
             ))
           )}
         </View>
@@ -200,26 +227,26 @@ export default function HomeScreen() {
           >
             <Text style={styles.buttonText}>Buka Halaman Tambah Donasi</Text>
           </Pressable>
-          <Pressable
-            style={[styles.button, { backgroundColor: colors.danger, marginTop: 10 }]}
-            onPress={async () => {
-              await AsyncStorage.clear();
-              router.replace("/onboarding");
-            }}
-          >
-            <Text style={styles.buttonText}>Keluar (Logout)</Text>
-          </Pressable>
         </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>AI Prediksi Kebutuhan Donasi</Text>
           {targetLocation ? (
-            <Text style={styles.description}>
-              Target: {targetLocation.receiverName} ({targetLocation.population}{" "}
-              anak)
-            </Text>
+            <View style={{ marginBottom: 12, padding: 12, backgroundColor: colors.primary + '10', borderRadius: 12, borderWidth: 1, borderColor: colors.primary + '20' }}>
+              <Text style={[styles.description, { color: colors.primary, fontWeight: '700' }]}>
+                🎯 Target: {targetLocation.receiverName}
+              </Text>
+              <Text style={[styles.description, { fontSize: 12 }]}>
+                ({targetLocation.population} anak • Kebutuhan dasar: {targetLocation.population * 2} porsi/hari)
+              </Text>
+            </View>
           ) : (
-            <Text style={styles.emptyText}>Belum ada target panti.</Text>
+            <View style={{ padding: 16, alignItems: 'center', backgroundColor: colors.bg, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.border }}>
+              <Ionicons name="hand-right-outline" size={32} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { textAlign: 'center', marginTop: 8 }]}>
+                Silakan pilih salah satu panti dari daftar "Semua Lokasi" di atas untuk memulai prediksi AI.
+              </Text>
+            </View>
           )}
 
           <View style={styles.formRow}>
@@ -284,7 +311,7 @@ export default function HomeScreen() {
                   />
                   {prediction && Number(donationAmount) < (prediction.estimatedKg * 0.8) && (
                     <Text style={{ color: colors.warning, fontSize: 13, fontWeight: '600' }}>
-                      Peringatan: Jumlah tidak cukup untuk {targetLocation.population} anak
+                      Peringatan: Jumlah tidak cukup untuk {targetLocation?.population} anak
                     </Text>
                   )}
                 </View>
@@ -312,6 +339,19 @@ export default function HomeScreen() {
             </View>
           ) : null}
         </View>
+
+        <View style={{ marginTop: 24, paddingHorizontal: 16 }}>
+          <Pressable
+            style={[styles.button, { backgroundColor: colors.danger }]}
+            onPress={async () => {
+              await AsyncStorage.clear();
+              router.replace("/onboarding");
+            }}
+          >
+            <Text style={styles.buttonText}>Keluar (Logout)</Text>
+          </Pressable>
+        </View>
+
       </ScrollView>
     </View>
   );

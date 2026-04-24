@@ -54,3 +54,22 @@ export const getUserById = query({
     return await ctx.db.get(args.userId);
   },
 });
+
+export const updateUserProfile = mutation({
+  args: {
+    userId: v.id("users"),
+    name: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    address: v.optional(v.string()),
+    favoriteFood: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const patch: any = {};
+    if (args.name !== undefined) patch.name = args.name;
+    if (args.phone !== undefined) patch.phone = args.phone;
+    if (args.address !== undefined) patch.address = args.address;
+    if (args.favoriteFood !== undefined) patch.favoriteFood = args.favoriteFood;
+
+    await ctx.db.patch(args.userId, patch);
+  },
+});

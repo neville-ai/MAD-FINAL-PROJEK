@@ -34,6 +34,24 @@ export default function PantiLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: "Histori",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="time-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profil",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-circle-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
