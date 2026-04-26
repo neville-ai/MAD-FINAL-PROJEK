@@ -1,22 +1,22 @@
-import { api } from '@/convex/_generated/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useMutation } from 'convex/react';
-import * as Location from 'expo-location';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { api } from "@/convex/_generated/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useMutation } from "convex/react";
+import * as Location from "expo-location";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from 'react-native';
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -24,14 +24,14 @@ export default function OnboardingScreen() {
   const authenticateUserMutation = useMutation(api.users.authenticateUser);
 
   const [step, setStep] = useState<1 | 2>(1);
-  const [role, setRole] = useState<'donor' | 'receiver' | null>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<"donor" | "receiver" | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSelectRole = (selectedRole: 'donor' | 'receiver') => {
+  const handleSelectRole = (selectedRole: "donor" | "receiver") => {
     setRole(selectedRole);
-    setStep(2); 
+    setStep(2);
   };
 
   const handleFinish = async () => {
@@ -45,7 +45,7 @@ export default function OnboardingScreen() {
       let lat = undefined;
       let lng = undefined;
 
-      if (status === 'granted') {
+      if (status === "granted") {
         const location = await Location.getLastKnownPositionAsync({});
         if (location) {
           lat = location.coords.latitude;
@@ -54,7 +54,13 @@ export default function OnboardingScreen() {
       }
 
       // Autentikasi (Login / Register) ke Convex
-      const result = await authenticateUserMutation({ email, password, role: role!, lat, lng });
+      const result = await authenticateUserMutation({
+        email,
+        password,
+        role: role!,
+        lat,
+        lng,
+      });
 
       // Jika server mengembalikan object error, tampilkan pesan singkatnya
       if (result && (result as any).error) {
@@ -69,14 +75,14 @@ export default function OnboardingScreen() {
       }
 
       // Simpan login state di lokal
-      await AsyncStorage.setItem('userId', userId);
-      await AsyncStorage.setItem('userRole', role!);
+      await AsyncStorage.setItem("userId", userId);
+      await AsyncStorage.setItem("userRole", role!);
 
       // Redirect
-      if (role === 'donor') {
-        router.replace('/(donor)' as any); 
+      if (role === "donor") {
+        router.replace("/(donor)" as any);
       } else {
-        router.replace('/(panti)' as any);
+        router.replace("/(panti)" as any);
       }
     } catch (error) {
       Alert.alert("Error", "Gagal menyimpan data pengguna.");
@@ -93,13 +99,14 @@ export default function OnboardingScreen() {
           <View style={styles.content}>
             <View style={styles.headerContainer}>
               <View style={styles.logoContainer}>
-                {/* Pastikan Anda sudah menyimpan gambar logo dengan nama 'logo.png' di folder 'assets/images/' */}
-                {/* Jika tidak ada, fallback ke desain teks/icon. Saya letakkan placeholder image di sini. */}
-                <Image 
-                  source={require('../assets/images/icon.png')} 
-                  style={styles.logo} 
-                  resizeMode="contain" 
-                  defaultSource={{ uri: 'https://via.placeholder.com/150?text=Zero+Drop' }}
+                {/* Ganti 'my-logo.png' dengan nama file gambar Anda di folder assets/images */}
+                <Image
+                  source={require("../assets/images/logo zero.png")}
+                  style={styles.logo}
+                  resizeMode="contain"
+                  defaultSource={{
+                    uri: "https://via.placeholder.com/150?text=Logo+Anda",
+                  }}
                 />
               </View>
               <Text style={styles.title}>Selamat Datang di Zero Drop</Text>
@@ -108,38 +115,44 @@ export default function OnboardingScreen() {
 
             <View style={styles.cardsContainer}>
               {/* Card Donatur (Hijau) */}
-              <TouchableOpacity 
-                style={[styles.card, styles.donorCard]} 
+              <TouchableOpacity
+                style={[styles.card, styles.donorCard]}
                 activeOpacity={0.8}
-                onPress={() => handleSelectRole('donor')}
+                onPress={() => handleSelectRole("donor")}
               >
                 <View style={styles.contentRow}>
                   <View style={[styles.iconBox, styles.donorIconBox]}>
                     <Text style={styles.iconText}>🤝</Text>
                   </View>
                   <View style={styles.textColumn}>
-                    <Text style={[styles.cardTitle, styles.donorText]}>Saya Donatur</Text>
+                    <Text style={[styles.cardTitle, styles.donorText]}>
+                      Saya Donatur
+                    </Text>
                     <Text style={styles.cardDesc}>
-                      Bantu mereka yang membutuhkan dengan berbagi donasi makanan harian.
+                      Bantu mereka yang membutuhkan dengan berbagi donasi
+                      makanan harian.
                     </Text>
                   </View>
                 </View>
               </TouchableOpacity>
 
               {/* Card Panti (Biru) */}
-              <TouchableOpacity 
-                style={[styles.card, styles.receiverCard]} 
+              <TouchableOpacity
+                style={[styles.card, styles.receiverCard]}
                 activeOpacity={0.8}
-                onPress={() => handleSelectRole('receiver')}
+                onPress={() => handleSelectRole("receiver")}
               >
                 <View style={styles.contentRow}>
                   <View style={[styles.iconBox, styles.receiverIconBox]}>
                     <Text style={styles.iconText}>🏠</Text>
                   </View>
                   <View style={styles.textColumn}>
-                    <Text style={[styles.cardTitle, styles.receiverText]}>Saya Panti</Text>
+                    <Text style={[styles.cardTitle, styles.receiverText]}>
+                      Saya Panti
+                    </Text>
                     <Text style={styles.cardDesc}>
-                      Ajukan atau kelola suplai makanan masuk untuk kebutuhan panti.
+                      Ajukan atau kelola suplai makanan masuk untuk kebutuhan
+                      panti.
                     </Text>
                   </View>
                 </View>
@@ -147,19 +160,25 @@ export default function OnboardingScreen() {
             </View>
           </View>
         ) : (
-          <KeyboardAvoidingView 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={styles.content}
           >
-            <TouchableOpacity onPress={() => setStep(1)} disabled={isSubmitting} style={styles.backButton}>
+            <TouchableOpacity
+              onPress={() => setStep(1)}
+              disabled={isSubmitting}
+              style={styles.backButton}
+            >
               <Text style={styles.backText}>← Kembali</Text>
             </TouchableOpacity>
 
             <View style={styles.headerContainer}>
               <Text style={styles.title}>
-                {role === 'donor' ? 'Login Donatur' : 'Login Panti'}
+                {role === "donor" ? "Login Donatur" : "Login Panti"}
               </Text>
-              <Text style={styles.subtitle}>Masukkan Email dan Password Anda</Text>
+              <Text style={styles.subtitle}>
+                Masukkan Email dan Password Anda
+              </Text>
             </View>
 
             <TextInput
@@ -184,7 +203,11 @@ export default function OnboardingScreen() {
               editable={!isSubmitting}
             />
 
-            <TouchableOpacity style={styles.primaryButton} onPress={handleFinish} disabled={isSubmitting}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={handleFinish}
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -201,13 +224,13 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: "#F8FAFC",
   },
   container: {
     flex: 1,
   },
   logoContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 24,
   },
   logo: {
@@ -217,77 +240,77 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   headerContainer: {
     marginBottom: 40,
-    alignItems: 'center', // Agar Logo dan teks posisinya rapi di tengah
+    alignItems: "center", // Agar Logo dan teks posisinya rapi di tengah
   },
   title: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: "800",
+    color: "#0F172A",
     marginBottom: 8,
     lineHeight: 36,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 16,
-    color: '#64748B',
-    fontWeight: '500',
-    textAlign: 'center',
+    color: "#64748B",
+    fontWeight: "500",
+    textAlign: "center",
   },
   cardsContainer: {
     gap: 20,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     padding: 24,
     borderWidth: 2,
     ...Platform.select({
       ios: {
-        shadowColor: '#94A3B8',
+        shadowColor: "#94A3B8",
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.15,
         shadowRadius: 20,
       },
       android: {
         elevation: 6,
-        shadowColor: '#94A3B8',
+        shadowColor: "#94A3B8",
       },
     }),
   },
   donorCard: {
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F0FDF4',
+    borderColor: "#E2E8F0",
+    backgroundColor: "#F0FDF4",
   },
   donorIconBox: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: "#DCFCE7",
   },
   donorText: {
-    color: '#166534',
+    color: "#166534",
   },
   receiverCard: {
-    borderColor: '#E2E8F0',
-    backgroundColor: '#EFF6FF',
+    borderColor: "#E2E8F0",
+    backgroundColor: "#EFF6FF",
   },
   receiverIconBox: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: "#DBEAFE",
   },
   receiverText: {
-    color: '#1E40AF',
+    color: "#1E40AF",
   },
   contentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   iconBox: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 20,
   },
   iconText: {
@@ -298,47 +321,47 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 6,
   },
   cardDesc: {
     fontSize: 14,
-    color: '#475569',
+    color: "#475569",
     lineHeight: 22,
   },
   backButton: {
     marginBottom: 30,
-    alignSelf: 'flex-start',
-    backgroundColor: '#E2E8F0',
+    alignSelf: "flex-start",
+    backgroundColor: "#E2E8F0",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
   },
   backText: {
     fontSize: 14,
-    color: '#334155',
-    fontWeight: '700',
+    color: "#334155",
+    fontWeight: "700",
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderWidth: 2,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
     borderRadius: 20,
     paddingVertical: 20,
     paddingHorizontal: 24,
     fontSize: 18,
-    color: '#0F172A',
+    color: "#0F172A",
     marginBottom: 32,
   },
   primaryButton: {
-    backgroundColor: '#0F172A',
+    backgroundColor: "#0F172A",
     paddingVertical: 20,
     borderRadius: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

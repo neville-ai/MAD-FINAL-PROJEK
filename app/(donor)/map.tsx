@@ -1,15 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import * as Location from "expo-location";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // react-native-maps & react-native-maps-directions are native-only packages.
@@ -43,7 +43,9 @@ if (Platform.OS !== "web") {
   // simple web-friendly stubs
   MapView = (props: any) => (
     <View style={[{ height: 300, backgroundColor: "#e5e7eb" }, props.style]}>
-      <Text style={{ textAlign: "center", padding: 12 }}>Peta tidak tersedia di web</Text>
+      <Text style={{ textAlign: "center", padding: 12 }}>
+        Peta tidak tersedia di web
+      </Text>
     </View>
   );
   Marker = (props: any) => null;
@@ -55,12 +57,12 @@ import { api } from "@/convex/_generated/api";
 import useTheme from "@/hooks/useTheme";
 import { calculateFoodNeeds, getUrgencyFactor } from "@/lib/foodNeeds";
 import {
-  geolocateWithGoogle,
-  getDirectionsApiKey,
-  hasDirectionsApiKey,
-  hasGeocodingApiKey,
-  hasGeolocationApiKey,
-  reverseGeocodeWithGoogle,
+    geolocateWithGoogle,
+    getDirectionsApiKey,
+    hasDirectionsApiKey,
+    hasGeocodingApiKey,
+    hasGeolocationApiKey,
+    reverseGeocodeWithGoogle,
 } from "@/lib/googleMaps";
 
 const EMPTY_REQUESTS: RequestMarker[] = [];
@@ -105,10 +107,7 @@ function calculateDistanceInMeters(
 
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1) *
-      Math.cos(lat2) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return earthRadius * c;
@@ -124,7 +123,9 @@ export default function MapScreen() {
     | undefined;
   const requests = requestsQuery ?? EMPTY_REQUESTS;
 
-  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
+    null,
+  );
   const [activeFilter, setActiveFilter] = useState<string>("Semua");
   const [userRegion, setUserRegion] = useState<Region | null>(null);
   const [isLocating, setIsLocating] = useState(true);
@@ -136,34 +137,39 @@ export default function MapScreen() {
     distanceKm: number;
     durationMin: number;
   } | null>(null);
-  const [locationSource, setLocationSource] = useState<"gps" | "network" | null>(null);
+  const [locationSource, setLocationSource] = useState<
+    "gps" | "network" | null
+  >(null);
   const lastUserRegionRef = useRef<Region | null>(null);
   const lastReverseGeocodedRef = useRef<Region | null>(null);
 
-  const updateUserRegion = useCallback((latitude: number, longitude: number) => {
-    const nextRegion: Region = {
-      latitude,
-      longitude,
-      ...USER_REGION_DELTA,
-    };
-    const previous = lastUserRegionRef.current;
+  const updateUserRegion = useCallback(
+    (latitude: number, longitude: number) => {
+      const nextRegion: Region = {
+        latitude,
+        longitude,
+        ...USER_REGION_DELTA,
+      };
+      const previous = lastUserRegionRef.current;
 
-    if (previous) {
-      const movedMeters = calculateDistanceInMeters(
-        previous.latitude,
-        previous.longitude,
-        nextRegion.latitude,
-        nextRegion.longitude,
-      );
+      if (previous) {
+        const movedMeters = calculateDistanceInMeters(
+          previous.latitude,
+          previous.longitude,
+          nextRegion.latitude,
+          nextRegion.longitude,
+        );
 
-      if (movedMeters < MIN_MOVEMENT_TO_UPDATE_M) {
-        return;
+        if (movedMeters < MIN_MOVEMENT_TO_UPDATE_M) {
+          return;
+        }
       }
-    }
 
-    lastUserRegionRef.current = nextRegion;
-    setUserRegion(nextRegion);
-  }, []);
+      lastUserRegionRef.current = nextRegion;
+      setUserRegion(nextRegion);
+    },
+    [],
+  );
 
   const applyGpsPosition = useCallback(
     (position: Location.LocationObject) => {
@@ -300,7 +306,9 @@ export default function MapScreen() {
         );
       } catch {
         if (isMounted) {
-          setLocationError("Lokasi belum bisa diambil. Pastikan GPS perangkat aktif.");
+          setLocationError(
+            "Lokasi belum bisa diambil. Pastikan GPS perangkat aktif.",
+          );
         }
         await tryNetworkGeolocationFallback();
       } finally {
@@ -324,15 +332,38 @@ export default function MapScreen() {
     }
   }, [requests, selectedRequestId]);
 
+  // Mapping urgency backend <-> frontend
+  const urgencyLabel: Record<string, string> = {
+    normal: "Normal",
+    butuh: "Butuh Bantuan",
+    urgent: "Urgent",
+  };
+  const urgencyColor: Record<string, string> = {
+    normal: colors.success,
+    butuh: colors.warning,
+    urgent: colors.danger,
+  };
+
+  const urgencyFilterMap: Record<string, string | undefined> = {
+    Semua: undefined,
+    Normal: "normal",
+    "Butuh Bantuan": "butuh",
+    Urgent: "urgent",
+  };
+
   const filteredRequests = useMemo(() => {
     if (activeFilter === "Semua") return requests;
-    if (activeFilter === "Normal") return requests.filter(r => !r.urgency || r.urgency === "Normal");
-    return requests.filter(r => r.urgency === activeFilter);
+    const urgencyKey = urgencyFilterMap[activeFilter];
+    if (!urgencyKey) return requests;
+    return requests.filter((r) => (r.urgency ?? "normal") === urgencyKey);
   }, [requests, activeFilter]);
 
   const selectedRequest =
-    filteredRequests.find((request) => request._id === selectedRequestId) ?? null;
-  const urgentCount = requests.filter((request) => request.urgency === "Urgent").length;
+    filteredRequests.find((request) => request._id === selectedRequestId) ??
+    null;
+  const urgentCount = requests.filter(
+    (request) => (request.urgency ?? "normal") === "urgent",
+  ).length;
   const localFoodNeeds = selectedRequest
     ? calculateFoodNeeds(
         selectedRequest.population,
@@ -344,7 +375,10 @@ export default function MapScreen() {
     selectedRequest
       ? {
           population: selectedRequest.population,
-          urgencyFactor: getUrgencyFactor(selectedRequest.urgency) as 1 | 1.1 | 1.2,
+          urgencyFactor: getUrgencyFactor(selectedRequest.urgency) as
+            | 1
+            | 1.1
+            | 1.2,
         }
       : "skip",
   );
@@ -359,7 +393,7 @@ export default function MapScreen() {
             latitude: request.latitude,
             longitude: request.longitude,
           }}
-          pinColor={request.urgency === "Urgent" ? colors.danger : request.urgency === "Butuh Bantuan" ? colors.warning : colors.success}
+          pinColor={urgencyColor[request.urgency ?? "normal"]}
           title={request.receiverName}
           description={`Population: ${request.population} orang`}
           onPress={() => handleMarkerPress(request)}
@@ -414,8 +448,6 @@ export default function MapScreen() {
     };
   }, [userRegion]);
 
-
-
   function focusRegion(region: Region) {
     mapRef.current?.animateToRegion(region, 700);
   }
@@ -433,14 +465,18 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerCard}>
           <View style={styles.headerTextGroup}>
             <Text style={styles.eyebrow}>ZERO DROP MAP</Text>
             <Text style={styles.title}>Peta permintaan bantuan pangan</Text>
             <Text style={styles.subtitle}>
-              Lihat lokasi panti asuhan, prioritas urgent, dan estimasi kebutuhan
-              makanan berbasis jumlah penghuni.
+              Lihat lokasi panti asuhan, prioritas urgent, dan estimasi
+              kebutuhan makanan berbasis jumlah penghuni.
             </Text>
           </View>
 
@@ -467,23 +503,39 @@ export default function MapScreen() {
               <Text style={styles.locateChipText}>My Location</Text>
             </Pressable>
           </View>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
             {["Semua", "Normal", "Butuh Bantuan", "Urgent"].map((filter) => (
               <Pressable
                 key={filter}
                 style={[
                   styles.filterChip,
                   activeFilter === filter && styles.filterChipActive,
-                  activeFilter === filter && filter === "Urgent" && { backgroundColor: colors.danger, borderColor: colors.danger },
-                  activeFilter === filter && filter === "Butuh Bantuan" && { backgroundColor: colors.warning, borderColor: colors.warning }
+                  activeFilter === filter &&
+                    filter === "Urgent" && {
+                      backgroundColor: colors.danger,
+                      borderColor: colors.danger,
+                    },
+                  activeFilter === filter &&
+                    filter === "Butuh Bantuan" && {
+                      backgroundColor: colors.warning,
+                      borderColor: colors.warning,
+                    },
                 ]}
                 onPress={() => setActiveFilter(filter)}
               >
-                <Text style={[
-                  styles.filterChipText,
-                  activeFilter === filter && styles.filterChipTextActive
-                ]}>{filter}</Text>
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    activeFilter === filter && styles.filterChipTextActive,
+                  ]}
+                >
+                  {filter}
+                </Text>
               </Pressable>
             ))}
           </ScrollView>
@@ -491,11 +543,14 @@ export default function MapScreen() {
           {userRegion && (
             <Text style={styles.gpsText}>
               {locationSource === "network" ? "Network" : "GPS"}:{" "}
-              {userRegion.latitude.toFixed(5)}, {userRegion.longitude.toFixed(5)}
+              {userRegion.latitude.toFixed(5)},{" "}
+              {userRegion.longitude.toFixed(5)}
               {userAccuracy !== null ? ` (±${Math.round(userAccuracy)}m)` : ""}
             </Text>
           )}
-          {userAddress && <Text style={styles.addressText}>Alamat: {userAddress}</Text>}
+          {userAddress && (
+            <Text style={styles.addressText}>Alamat: {userAddress}</Text>
+          )}
         </View>
 
         <View style={styles.mapCard}>
@@ -581,9 +636,12 @@ export default function MapScreen() {
 
           {requests.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>Belum ada panti asuhan terdaftar</Text>
+              <Text style={styles.emptyTitle}>
+                Belum ada panti asuhan terdaftar
+              </Text>
               <Text style={styles.emptyDescription}>
-                Panti asuhan akan muncul di sini setelah mereka mendaftar dan mengisi profil kebutuhan mereka.
+                Panti asuhan akan muncul di sini setelah mereka mendaftar dan
+                mengisi profil kebutuhan mereka.
               </Text>
             </View>
           ) : selectedRequest ? (
@@ -601,16 +659,13 @@ export default function MapScreen() {
                   style={[
                     styles.priorityBadge,
                     {
-                      backgroundColor: selectedRequest.urgency === "Urgent"
-                        ? colors.danger
-                        : selectedRequest.urgency === "Butuh Bantuan"
-                        ? colors.warning
-                        : colors.success,
+                      backgroundColor:
+                        urgencyColor[selectedRequest.urgency ?? "normal"],
                     },
                   ]}
                 >
                   <Text style={styles.priorityBadgeText}>
-                    {selectedRequest.urgency || "Normal"}
+                    {urgencyLabel[selectedRequest.urgency ?? "normal"]}
                   </Text>
                 </View>
               </View>
@@ -623,7 +678,9 @@ export default function MapScreen() {
               </View>
               {routeInfo && (
                 <View style={styles.populationCard}>
-                  <Text style={styles.populationLabel}>Estimasi rute dari lokasi kamu</Text>
+                  <Text style={styles.populationLabel}>
+                    Estimasi rute dari lokasi kamu
+                  </Text>
                   <Text style={styles.routeValue}>
                     {routeInfo.distanceKm.toFixed(1)} km •{" "}
                     {Math.round(routeInfo.durationMin)} menit
@@ -640,7 +697,8 @@ export default function MapScreen() {
                       : "Loading..."}
                   </Text>
                   <Text style={styles.needFormula}>
-                    population x 2 x {getUrgencyFactor(selectedRequest.urgency)} x 1
+                    population x 2 x {getUrgencyFactor(selectedRequest.urgency)}{" "}
+                    x 1
                   </Text>
                 </View>
 
@@ -652,7 +710,8 @@ export default function MapScreen() {
                       : "Loading..."}
                   </Text>
                   <Text style={styles.needFormula}>
-                    population x 2 x {getUrgencyFactor(selectedRequest.urgency)} x 7
+                    population x 2 x {getUrgencyFactor(selectedRequest.urgency)}{" "}
+                    x 7
                   </Text>
                 </View>
 
@@ -664,7 +723,8 @@ export default function MapScreen() {
                       : "Loading..."}
                   </Text>
                   <Text style={styles.needFormula}>
-                    population x 2 x {getUrgencyFactor(selectedRequest.urgency)} x 30
+                    population x 2 x {getUrgencyFactor(selectedRequest.urgency)}{" "}
+                    x 30
                   </Text>
                 </View>
               </View>
@@ -988,5 +1048,4 @@ const createStyles = (colors: ReturnType<typeof useTheme>["colors"]) =>
       lineHeight: 20,
       textAlign: "center",
     },
-
   });
